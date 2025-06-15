@@ -29,6 +29,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/howler": "^2.2.12",
     "@types/node": "^20",
+    "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "cross-env": "^7.0.3",

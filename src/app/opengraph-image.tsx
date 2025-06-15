@@ -11,7 +11,7 @@ export const size = {
 };
 
 // Image generation
-export async function GET() {
+export default function OpenGraphImage() {
   // No need to load custom font, using system fonts instead
 
   return new ImageResponse(
