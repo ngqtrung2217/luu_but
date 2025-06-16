@@ -63,13 +63,9 @@ export const sendThankYouEmail = async (recipientEmail: string, name: string): P
           
           <p style="font-size: 16px;">Cảm ơn bạn rất nhiều vì đã dành thời gian để viết lưu bút. Những lời nhắn của bạn thực sự có ý nghĩa rất lớn đối với tôi!</p>
           
-          <div style="margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #4b0082; border-radius: 4px;">
-            <p style="font-style: italic;">"Duyên đưa ta gặp nhau trong vô vàn người, và tôi trân trọng từng khoảnh khắc đó."</p>
-          </div>
+          <p style="font-size: 16px;">Chúc bạn một ngày tuyệt vời và hẹn gặp lại bạn!</p>
           
-          <p style="font-size: 16px;">Chúc bạn một ngày tuyệt vời!</p>
-          
-          <p style="font-size: 16px; margin-top: 30px;">Trân trọng,<br/>Trung</p>
+          <p style="font-size: 16px; margin-top: 30px;">Trân trọng,<br/>Nguyen Quang Trung</p>
           
           <p style="font-size: 12px; color: #888; margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 15px;">
             Email này được gửi tự động. Vui lòng không trả lời email này.
