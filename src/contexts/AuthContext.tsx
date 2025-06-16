@@ -7,11 +7,10 @@ import { Session } from "@supabase/supabase-js";
 interface AuthContextType {
   session: Session | null;
   isAdmin: boolean;
-  isLoading: boolean;
-  signIn: (
+  isLoading: boolean;  signIn: (
     email: string,
     password: string
-  ) => Promise<{ error: any; success: boolean }>;
+  ) => Promise<{ error: Error | null; success: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -78,10 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from("admin_users")
         .select("*")
         .eq("user_id", session.user.id)
-        .single();
-
-      setIsAdmin(!!data);
-    } catch (error) {
+        .single();      setIsAdmin(!!data);
+    } catch {
       setIsAdmin(false);
     } finally {
       setIsLoading(false);
@@ -115,9 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
 
-      return { error, success: !error };
-    } catch (error: any) {
-      return { error, success: false };
+      return { error, success: !error };    } catch (error) {
+      return { error: error as Error, success: false };
     }
   };
   const signOut = async () => {

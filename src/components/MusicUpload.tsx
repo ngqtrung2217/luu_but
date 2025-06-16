@@ -20,12 +20,12 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
   // Fetch existing tracks on component mount
   useEffect(() => {
     fetchTracks();
-  }, []);  // Fetch existing tracks
+  }, []); // Fetch existing tracks
   const fetchTracks = async () => {
     setLoading(true);
     try {
       console.log("MusicUpload: Fetching tracks from music_meta table...");
-      
+
       // Use an API route instead to bypass client-side RLS issues
       // or use simpler query that doesn't trigger the recursion issue
       const { data, error } = await supabase
@@ -41,7 +41,7 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
         );
         // Don't show detailed errors to users
         toast.error("Không thể lấy danh sách nhạc. Vui lòng thử lại sau.");
-        
+
         // Fallback: still try to show some tracks even if there's an error
         if (data) {
           console.log("MusicUpload: Using partial data despite error");
@@ -51,19 +51,23 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
       }
 
       console.log("MusicUpload: Fetched tracks:", data?.length || 0);
-      setTracks(data as MusicTrack[]);
-    } catch (error: any) {
+      setTracks(data as MusicTrack[]);    } catch (error) {
       console.error("MusicUpload: Exception fetching tracks:", error);
       toast.error("Có lỗi xảy ra khi lấy danh sách nhạc");
-      
+
       // Try to recover by fetching without authentication
       try {
-        const { data } = await fetch('/api/music-tracks').then(res => res.json());
+        const { data } = await fetch("/api/music-tracks").then((res) =>
+          res.json()
+        );
         if (data && Array.isArray(data)) {
           setTracks(data as MusicTrack[]);
         }
       } catch (fallbackError) {
-        console.error("MusicUpload: Fallback fetch also failed:", fallbackError);
+        console.error(
+          "MusicUpload: Fallback fetch also failed:",
+          fallbackError
+        );
       }
     } finally {
       setLoading(false);
@@ -82,14 +86,12 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
 
     try {
       console.log("MusicUpload: Starting file upload...");
-      
+
       // Upload file to storage
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      // Try to upload the file
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const filePath = `${fileName}`;      // Try to upload the file
+      const { error: uploadError } = await supabase.storage
         .from("songs")
         .upload(filePath, file);
 
@@ -99,19 +101,23 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
       }
 
       console.log("MusicUpload: File uploaded successfully, path:", filePath);
-      
-      // Try to get the current user's ID
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
-      
-      console.log("MusicUpload: Current user ID:", userId || "anonymous");
 
-      // Add metadata to database (with created_by if available)
-      const metaData: any = { 
-        title, 
-        file_path: filePath 
+      // Try to get the current user's ID
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      console.log("MusicUpload: Current user ID:", userId || "anonymous");      // Add metadata to database (with created_by if available)
+      const metaData: {
+        title: string;
+        file_path: string;
+        created_by?: string;
+      } = {
+        title,
+        file_path: filePath,
       };
-      
+
       // Add the user ID if available
       if (userId) {
         metaData.created_by = userId;
@@ -119,23 +125,23 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
 
       // Try using the API route instead of direct database access
       try {
-        const response = await fetch('/api/music-upload', {
-          method: 'POST',
+        const response = await fetch("/api/music-upload", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(metaData),
         });
-        
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || "Unknown error");
         }
-        
-        console.log("MusicUpload: Successfully added metadata via API");
-      } catch (apiError: any) {
-        console.error("MusicUpload: API route error:", apiError);
-        
+
+        console.log("MusicUpload: Successfully added metadata via API");      } catch (apiError) {
+        const error = apiError as Error;
+        console.error("MusicUpload: API route error:", error);
+
         // Fallback to direct insertion if API fails
         console.log("MusicUpload: Trying direct insertion fallback");
         const { error: dbError } = await supabase
@@ -146,18 +152,17 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
           console.error("MusicUpload: Database insertion error:", dbError);
           throw dbError;
         }
-      }      toast.success("Tải lên nhạc thành công!");
+      }
+      toast.success("Tải lên nhạc thành công!");
       setFile(null);
-      setTitle("");
-      
-      // Call the onUploadSuccess callback if provided
+      setTitle("");      // Call the onUploadSuccess callback if provided
       if (onUploadSuccess) {
         onUploadSuccess();
       }
       setTitle("");
       fetchTracks(); // Refresh the track list
-    } catch (error: any) {
-      toast.error(`Upload failed: ${error.message}`);
+    } catch (error) {
+      toast.error(`Upload failed: ${(error as Error).message}`);
     } finally {
       setIsUploading(false);
     }
@@ -182,10 +187,9 @@ export default function MusicUpload({ onUploadSuccess }: MusicUploadProps) {
 
         if (dbError) throw dbError;
 
-        toast.success("Track deleted successfully!");
-        fetchTracks(); // Refresh the track list
-      } catch (error: any) {
-        toast.error(`Delete failed: ${error.message}`);
+        toast.success("Track deleted successfully!");        fetchTracks(); // Refresh the track list
+      } catch (error) {
+        toast.error(`Delete failed: ${(error as Error).message}`);
       }
     }
   };

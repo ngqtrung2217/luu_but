@@ -28,9 +28,12 @@ export async function POST(request: Request) {
         }
       }
     );
-    
-    // Insert the music metadata into the database
-    const metaData: any = { 
+      // Insert the music metadata into the database
+    const metaData: { 
+      title: string;
+      file_path: string;
+      created_by?: string;
+    } = { 
       title, 
       file_path 
     };
@@ -57,11 +60,10 @@ export async function POST(request: Request) {
       { success: true, data }, 
       { status: 200 }
     );
-    
-  } catch (error: any) {
+      } catch (error) {
     console.error("API: Exception in music upload handler:", error);
     return NextResponse.json(
-      { error: `Server error: ${error.message}` }, 
+      { error: `Server error: ${(error as Error).message}` }, 
       { status: 500 }
     );
   }

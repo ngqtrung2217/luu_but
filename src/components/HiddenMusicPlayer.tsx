@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Howl } from "howler";
 import { supabase } from "@/utils/supabase";
 import { MusicTrack } from "@/utils/supabase";
@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "@/utils/motion";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function CornerMusicPlayer() {
+export default function HiddenMusicPlayer() {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true); // Auto-play by default
@@ -17,8 +17,9 @@ export default function CornerMusicPlayer() {
   const [duration, setDuration] = useState(0);
   const [seek, setSeek] = useState(0);
   const [loading, setLoading] = useState(true);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [error, setError] = useState<string | null>(null);
+  // Error state is only set but not used in rendering
+  const [, setError] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState(false); // Initially hidden
   const soundRef = useRef<Howl | null>(null);
   const seekIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -27,50 +28,29 @@ export default function CornerMusicPlayer() {
     fetchTracks();
 
     // Set up periodic refresh every 5 minutes
-    const refreshInterval = setInterval(fetchTracks, 5 * 60 * 1000);    return () => {
-      clearInterval(refreshInterval);
-      stopAndCleanup();
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const refreshInterval = setInterval(fetchTracks, 5 * 60 * 1000);
 
-  // Handle autoplay restrictions
-  useEffect(() => {
-    // Try to autoplay as soon as possible
-    const attemptAutoplay = () => {
-      if (soundRef.current && !soundRef.current.playing()) {
-        soundRef.current.play();
+    // Add keyboard listener for player visibility toggle
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle player visibility with 'M' key
+      if (e.key === "m" || e.key === "M") {
+        setIsVisible((prev) => !prev);
       }
     };
 
-    // Add event listeners to enable autoplay after user interaction
-    const handleUserInteraction = () => {
-      attemptAutoplay();
-      // Clean up event listeners after first interaction
-      document.removeEventListener("click", handleUserInteraction);
-      document.removeEventListener("touchstart", handleUserInteraction);
-      document.removeEventListener("keydown", handleUserInteraction);
-      document.removeEventListener("scroll", handleUserInteraction);
-    };
+    // Add event listener
+    window.addEventListener("keydown", handleKeyDown);
 
-    // Add various event listeners for different types of user interactions
-    document.addEventListener("click", handleUserInteraction);
-    document.addEventListener("touchstart", handleUserInteraction);
-    document.addEventListener("keydown", handleUserInteraction);
-    document.addEventListener("scroll", handleUserInteraction);
-
-    // Cleanup function
     return () => {
-      document.removeEventListener("click", handleUserInteraction);
-      document.removeEventListener("touchstart", handleUserInteraction);
-      document.removeEventListener("keydown", handleUserInteraction);
-      document.removeEventListener("scroll", handleUserInteraction);
+      clearInterval(refreshInterval);
+      stopAndCleanup();      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch tracks from Supabase or API fallback
   const fetchTracks = async () => {
     try {
-      console.log("CornerMusicPlayer: Fetching tracks...");
+      console.log("MusicPlayer: Fetching tracks...");
       setLoading(true);
 
       // Try API endpoint first (more reliable)
@@ -79,16 +59,14 @@ export default function CornerMusicPlayer() {
         const { data: apiData } = await response.json();
 
         if (apiData && Array.isArray(apiData) && apiData.length > 0) {
-          console.log(
-            `CornerMusicPlayer: Loaded ${apiData.length} tracks from API`
-          );
+          console.log(`MusicPlayer: Loaded ${apiData.length} tracks from API`);
           setTracks(apiData);
           setError(null);
           setLoading(false);
           return;        }      } catch {
         // Error is intentionally ignored
         console.log(
-          "CornerMusicPlayer: API fallback failed, trying Supabase directly"
+          "MusicPlayer: API fallback failed, trying Supabase directly"
         );
       }
 
@@ -100,19 +78,23 @@ export default function CornerMusicPlayer() {
 
       if (error) {
         // Silently log the error but don't show to user
-        console.error("CornerMusicPlayer: Supabase error:", error);
+        console.error("MusicPlayer: Supabase error:", error);
         // Don't throw or display error to user
         setLoading(false);
         return;
       }
 
       if (data) {
+        console.log(`MusicPlayer: Loaded ${data.length} tracks from Supabase`);
         setTracks(data);
-        setError(null);
+      } else {
+        setTracks([]);
       }
+
+      setError(null);
     } catch (err) {
-      console.error("CornerMusicPlayer: Error fetching tracks:", err);
-      // Don't show error to user
+      console.error("MusicPlayer: Error fetching tracks:", err);
+      // Don't show errors to user
     } finally {
       setLoading(false);
     }
@@ -127,12 +109,11 @@ export default function CornerMusicPlayer() {
         stopAndCleanup();
 
         const track = tracks[currentTrackIndex];
-        console.log(`CornerMusicPlayer: Loading track "${track.title}"`);
+        console.log(`MusicPlayer: Loading track "${track.title}"`);
 
         // Try multiple sources for better compatibility
         // 1. Custom API proxy (handles CORS, streaming)
         // 2. Direct Supabase URL
-        // 3. Storage API URL (another format)
         const apiUrl = `/api/music-play?path=${encodeURIComponent(
           track.file_path
         )}`;
@@ -153,9 +134,7 @@ export default function CornerMusicPlayer() {
 
         // Combine all possible sources
         const sources = [apiUrl, ...alternativeUrls];
-        console.log(
-          `CornerMusicPlayer: Trying ${sources.length} possible sources`
-        );
+        console.log(`MusicPlayer: Trying ${sources.length} possible sources`);
 
         // Create new Howl instance with multiple fallback sources
         const sound = new Howl({
@@ -186,7 +165,7 @@ export default function CornerMusicPlayer() {
           },
           onloaderror: async (_, err) => {
             console.error(
-              `CornerMusicPlayer: All sources failed for "${track.title}"`,
+              `MusicPlayer: All sources failed for "${track.title}"`,
               err
             );
 
@@ -200,51 +179,59 @@ export default function CornerMusicPlayer() {
         soundRef.current = sound;
         setSeek(0);
 
-        // Auto-play if it was already playing or initial load
-        if (isPlaying) {
-          sound.play();
-        }
+        // Auto-play
+        sound.play();
       } catch (err) {
-        console.error("CornerMusicPlayer: Error in loadTrack", err);
+        console.error("MusicPlayer: Error in loadTrack", err);
 
         // Try next track after a short delay
         setTimeout(playNextTrack, 1500);
       }
-    };
+    };    loadTrack();
+  }, [tracks, currentTrackIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    loadTrack();
-  }, [currentTrackIndex, tracks, volume]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Update volume when changed
+  useEffect(() => {
+    if (soundRef.current) {
+      soundRef.current.volume(volume);
+    }
+  }, [volume]);
 
   // Clean up function
-  const stopAndCleanup = () => {
+  const stopAndCleanup = useCallback(() => {
     if (soundRef.current) {
       soundRef.current.stop();
-      soundRef.current.unload();
-      soundRef.current = null;
     }
-    stopSeekInterval();
-  };
 
-  // Start tracking audio position
-  const startSeekInterval = () => {
-    stopSeekInterval();
-
-    seekIntervalRef.current = setInterval(() => {
-      if (soundRef.current && soundRef.current.playing()) {
-        setSeek(soundRef.current.seek());
-      }
-    }, 1000);
-  };
-
-  // Stop tracking audio position
-  const stopSeekInterval = () => {
     if (seekIntervalRef.current) {
       clearInterval(seekIntervalRef.current);
       seekIntervalRef.current = null;
     }
-  };
+  }, []);
 
-  // Handle play/pause toggle
+  // Play next track
+  const playNextTrack = useCallback(() => {
+    if (tracks.length === 0) return;
+    
+    setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % tracks.length);
+  }, [tracks]);  // Stop seek interval
+  const stopSeekInterval = useCallback(() => {
+    if (seekIntervalRef.current) {
+      clearInterval(seekIntervalRef.current);
+      seekIntervalRef.current = null;
+    }  }, []);
+
+  // Start seek interval
+  const startSeekInterval = useCallback(() => {
+    stopSeekInterval();
+    seekIntervalRef.current = setInterval(() => {
+      if (soundRef.current) {
+        setSeek(soundRef.current.seek());
+      }
+    }, 1000);
+  }, [stopSeekInterval]);
+
+  // Player controls
   const togglePlay = () => {
     if (!soundRef.current) return;
 
@@ -253,83 +240,69 @@ export default function CornerMusicPlayer() {
     } else {
       soundRef.current.play();
     }
-
-    setIsPlaying(!isPlaying);
   };
 
-  // Play next track
-  const playNextTrack = () => {
-    const nextIndex = (currentTrackIndex + 1) % tracks.length;
-    setCurrentTrackIndex(nextIndex);
+  const playPreviousTrack = () => {
+    const newIndex =
+      currentTrackIndex > 0 ? currentTrackIndex - 1 : tracks.length - 1;
+    setCurrentTrackIndex(newIndex);
   };
 
-  // Play previous track
-  const playPrevTrack = () => {
-    const prevIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
-    setCurrentTrackIndex(prevIndex);
-  };
-
-  // Handle volume change
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-
-    if (soundRef.current) {
-      soundRef.current.volume(newVolume);
-    }
-  };
-
-  // Handle seek change
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSeek = parseFloat(e.target.value);
-    setSeek(newSeek);
-
+    const value = parseFloat(e.target.value);
     if (soundRef.current) {
-      soundRef.current.seek(newSeek);
+      soundRef.current.seek(value);
+      setSeek(value);
     }
   };
 
-  // Toggle expanded view
-  const toggleExpanded = () => setExpanded(!expanded);
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    setVolume(value);
+  };
 
-  // Format time display
+  const toggleExpanded = () => {
+    setExpanded(!expanded);
+  };
+
+  // Format time function
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
-  // Helper function to determine color for character count (unused but kept for reference)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getCounterColor = () => {
-    return duration > 0 ? "text-gray-400" : "text-gray-500";
-  };
 
-  // Get current track
-  const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null;
+  const currentTrack = tracks[currentTrackIndex];
 
+  // If player is not visible, return null to hide it completely
+  if (!isVisible) {
+    return null;
+  }
+
+  // Only render player UI when visible
   return (
-    <>
+    <div className="fixed bottom-4 left-4 z-50">
       <ToastContainer
         position="bottom-left"
         autoClose={3000}
-        hideProgressBar
-        newestOnTop
+        hideProgressBar={false}
+        newestOnTop={false}
         closeOnClick
         rtl={false}
-        pauseOnFocusLoss={false}
+        pauseOnFocusLoss
         draggable
         pauseOnHover
         theme="dark"
       />
 
-      {/* Collapsed player icon - always fixed in bottom right corner */}
+      {/* Collapsed player */}
       <AnimatePresence>
         {!expanded && (
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            className="fixed bottom-4 left-4 z-50 flex items-center gap-2"
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="bg-gray-800/80 backdrop-blur-lg rounded-full p-2 shadow-lg flex items-center gap-3 border border-gray-700"
           >
             <button
               onClick={togglePlay}
@@ -368,7 +341,6 @@ export default function CornerMusicPlayer() {
             >
               {loading ? (
                 <span className="flex items-center gap-1">
-                  {" "}
                   <svg
                     className="animate-spin w-3 h-3"
                     fill="none"
@@ -407,7 +379,7 @@ export default function CornerMusicPlayer() {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
-            className="bg-gray-800/90 backdrop-blur-lg rounded-2xl p-4 shadow-lg fixed bottom-4 left-4 z-50 max-w-xs border border-gray-700"
+            className="bg-gray-800/90 backdrop-blur-lg rounded-2xl p-4 shadow-lg max-w-xs border border-gray-700"
           >
             <div className="flex justify-between items-center mb-3">
               <h3 className="font-medium text-white">Nhạc Nền</h3>
@@ -432,41 +404,30 @@ export default function CornerMusicPlayer() {
               </button>
             </div>
 
-            {/* Track info */}
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-white truncate">
-                {currentTrack?.title || "Không có bài hát nào"}
-              </h4>
-              <p className="text-xs text-gray-400 truncate">
-                {currentTrack?.artist || "Không xác định"}
-              </p>
-            </div>
-
-            {/* Seek bar */}
-            <div className="mb-4">
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>{formatTime(seek)}</span>
-                <span>{formatTime(duration)}</span>
+            <div className="mt-2 mb-3">
+              <div className="text-sm font-medium mb-1 flex justify-between">
+                <span>{currentTrack?.title || "Không có bài hát"}</span>
+                <span className="text-gray-400">
+                  {formatTime(seek)} / {formatTime(duration)}
+                </span>
               </div>
               <input
                 type="range"
-                min="0"
+                min={0}
                 max={duration || 1}
                 value={seek}
                 onChange={handleSeekChange}
-                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-purple-500"
+                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
               />
             </div>
 
-            {/* Playback controls */}
-            <div className="flex justify-center items-center gap-4 mb-4">
+            <div className="flex justify-between items-center mb-4">
               <button
-                onClick={playPrevTrack}
-                disabled={tracks.length === 0}
-                className="text-white disabled:text-gray-600"
+                onClick={playPreviousTrack}
+                className="text-gray-300 hover:text-white"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-8 h-8"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -476,12 +437,11 @@ export default function CornerMusicPlayer() {
 
               <button
                 onClick={togglePlay}
-                disabled={tracks.length === 0}
-                className="w-10 h-10 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 rounded-full flex items-center justify-center"
+                className="w-12 h-12 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center transition-colors shadow-lg"
               >
                 {isPlaying ? (
                   <svg
-                    className="w-5 h-5"
+                    className="w-6 h-6"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -493,13 +453,13 @@ export default function CornerMusicPlayer() {
                   </svg>
                 ) : (
                   <svg
-                    className="w-5 h-5"
+                    className="w-6 h-6"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
                     <path
                       fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 011.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
                       clipRule="evenodd"
                     />
                   </svg>
@@ -508,11 +468,10 @@ export default function CornerMusicPlayer() {
 
               <button
                 onClick={playNextTrack}
-                disabled={tracks.length === 0}
-                className="text-white disabled:text-gray-600"
+                className="text-gray-300 hover:text-white"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-8 h-8"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -521,10 +480,9 @@ export default function CornerMusicPlayer() {
               </button>
             </div>
 
-            {/* Volume control */}
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center mb-4">
               <svg
-                className="w-4 h-4 text-gray-400"
+                className="w-5 h-5 text-gray-400 mr-2"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -536,45 +494,62 @@ export default function CornerMusicPlayer() {
               </svg>
               <input
                 type="range"
-                min="0"
-                max="1"
-                step="0.01"
+                min={0}
+                max={1}
+                step={0.01}
                 value={volume}
                 onChange={handleVolumeChange}
-                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
               />
+              <div className="ml-2">{Math.round(volume * 100)}%</div>
             </div>
-            {/* Track list */}
-            {tracks.length > 0 && (
-              <div className="mt-4">
-                <h5 className="text-xs font-medium text-gray-400 mb-2">
-                  Danh Sách Phát
-                </h5>
-                <div className="space-y-1">
-                  {tracks.map((track, index) => (
-                    <button
-                      key={track.id}
-                      onClick={() => setCurrentTrackIndex(index)}
-                      className={`w-full text-left p-2 rounded-md text-xs ${
-                        currentTrackIndex === index
-                          ? "bg-purple-600/20 text-purple-300"
-                          : "hover:bg-gray-700/50 text-gray-300"
-                      }`}
-                    >
-                      <div className="truncate font-medium">
-                        {track.title || "Không có tiêu đề"}
-                      </div>
-                      <div className="truncate text-[10px] text-gray-400">
-                        {track.artist || "Không xác định"}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+
+            {/* Track list section */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm text-gray-400">
+                {tracks.length} bài hát
               </div>
-            )}
+              <div className="flex text-xs">
+                <button
+                  onClick={() => setIsVisible(false)}
+                  className="text-gray-400 hover:text-white flex items-center gap-1"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                    />
+                  </svg>
+                  Ẩn
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
+              {tracks.map((track, index) => (
+                <button
+                  key={track.id}
+                  onClick={() => setCurrentTrackIndex(index)}
+                  className={`w-full text-left py-1 px-2 rounded text-sm truncate ${
+                    currentTrackIndex === index
+                      ? "bg-purple-900/40 text-purple-300"
+                      : "hover:bg-gray-700/50 text-gray-300"
+                  }`}
+                >
+                  {track.title}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }

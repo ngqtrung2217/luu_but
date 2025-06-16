@@ -156,14 +156,18 @@ export default function MusicPlayer() {
         clearInterval(seekIntervalRef.current);
       }
     };
-  }, [tracks, currentTrackIndex]);
-
-  // Update volume when it changes
+  }, [tracks, currentTrackIndex]);  // Update volume when it changes
   useEffect(() => {
     if (soundRef.current) {
       soundRef.current.volume(volume);
+      // Update playing state if needed
+      if (isPlaying && !soundRef.current.playing()) {
+        soundRef.current.play();
+      } else if (!isPlaying && soundRef.current.playing()) {
+        soundRef.current.pause();
+      }
     }
-  }, [volume]);
+  }, [volume, isPlaying]); // Dependencies are already included
 
   const togglePlayPause = () => {
     if (!soundRef.current) return;

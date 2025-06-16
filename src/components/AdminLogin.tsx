@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "@/utils/motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
@@ -64,9 +64,11 @@ export default function AdminLogin() {
 
       // Force page reload after successful login
       window.location.reload();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Login error:", error);
-      toast.error(`Lỗi đăng nhập: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : "Lỗi không xác định";
+      toast.error(`Lỗi đăng nhập: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

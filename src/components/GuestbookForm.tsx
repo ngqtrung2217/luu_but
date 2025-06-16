@@ -14,7 +14,8 @@ export default function GuestbookForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [quoteMessage, setQuoteMessage] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);  useEffect(() => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
     // Set to empty string to hide the quote section
     setQuoteMessage("");
 
@@ -54,16 +55,17 @@ export default function GuestbookForm() {
       return;
     }
 
-    setIsSubmitting(true);    try {
+    setIsSubmitting(true);
+    try {
       const entryData = {
         name: name.trim() || "Người bạn ẩn danh",
         message: message.trim(),
-        email: email.trim() || null // Include email in the database
+        email: email.trim() || null, // Include email in the database
       };
 
       const { error } = await supabase.from("luubut").insert([entryData]);
 
-      if (error) throw error;      // Send email notification via API endpoint
+      if (error) throw error; // Send email notification via API endpoint
       try {
         await fetch("/api/notify", {
           method: "POST",
@@ -76,7 +78,7 @@ export default function GuestbookForm() {
             email: email.trim() || undefined, // Use the email state directly
           }),
         });
-        
+
         // Send thank you email if email is provided
         if (email.trim()) {
           await fetch("/api/thank-you", {
@@ -93,7 +95,7 @@ export default function GuestbookForm() {
       } catch (emailError) {
         console.error("Failed to send email notification:", emailError);
         // Continue with success flow even if email fails
-      }// Clear form and show success animation
+      } // Clear form and show success animation
       setName("");
       setEmail("");
       setMessage("");
@@ -109,8 +111,10 @@ export default function GuestbookForm() {
       setTimeout(() => {
         setShowConfetti(false);
       }, 5000);
-    } catch (error: any) {
-      toast.error(`Lỗi: ${error.message || "Không thể gửi lưu bút"}`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Không thể gửi lưu bút";
+      toast.error(`Lỗi: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -157,7 +161,9 @@ export default function GuestbookForm() {
         {/* Inspiration quote at the top */}
         {quoteMessage && (
           <div className="px-5 py-4 bg-gray-900/70 backdrop-blur-sm border-b border-purple-800/30">
-            <p className="text-sm text-gray-300 italic">"{quoteMessage}"</p>
+            <p className="text-sm text-gray-300 italic">
+              &ldquo;{quoteMessage}&rdquo;
+            </p>
           </div>
         )}
 
@@ -207,7 +213,9 @@ export default function GuestbookForm() {
             </motion.div>
           </div>
 
-          <div className="mb-5">            <div className="flex justify-between mb-2">
+          <div className="mb-5">
+            {" "}
+            <div className="flex justify-between mb-2">
               <label
                 htmlFor="message"
                 className="block text-gray-400 text-sm font-medium"
@@ -218,12 +226,12 @@ export default function GuestbookForm() {
                 {message.length} ký tự
               </span>
             </div>
-
             <motion.div
               whileFocus={{ scale: 1.01 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              {" "}              <textarea
+              {" "}
+              <textarea
                 id="message"
                 value={message}
                 onChange={handleMessageChange}
@@ -234,7 +242,6 @@ export default function GuestbookForm() {
                 ref={textareaRef}
               />
             </motion.div>
-
             <p className="mt-1 text-xs text-gray-500">
               Hãy chia sẻ kỷ niệm, cảm xúc hoặc lời nhắn nhủ đầy ý nghĩa về
               những cuộc gặp gỡ định mệnh.

@@ -51,7 +51,6 @@ export default function FullPageScroll() {
     // Return a placeholder with the same height to prevent layout shift
     return <div className="min-h-screen bg-gray-900" />;
   }
-
   return (
     <>
       <Navigation activeSection={activeSection} />
@@ -67,8 +66,7 @@ export default function FullPageScroll() {
         draggable
         pauseOnHover
         theme="dark"
-      />{" "}
-      {/* GitHub elements removed */}
+      />
       {/* Confetti effect on load */}
       {showConfetti && (
         <Confetti
@@ -79,8 +77,7 @@ export default function FullPageScroll() {
           gravity={0.05}
           colors={["#58a6ff", "#9c36b5", "#1f6feb", "#238636", "#f78166"]}
         />
-      )}{" "}
-      {/* RandomQuotes removed */}
+      )}
       <ReactFullpage
         licenseKey={fullpageLicenseKey}
         scrollingSpeed={1000}
@@ -91,10 +88,10 @@ export default function FullPageScroll() {
         credits={{ enabled: false }}
         scrollOverflow={true}
         easing="cubic-bezier(0.77, 0, 0.175, 1)" // Smooth easing similar to Uniqlo's website
-        afterLoad={(origin, destination, direction) => {
+        afterLoad={(origin, destination) => {
           setActiveSection(destination.index);
         }}
-        render={({ state, fullpageApi }) => {
+        render={({ fullpageApi }: { fullpageApi: { moveSectionDown: () => void; moveTo: (section: number, slide?: number) => void } }) => {
           return (
             <ReactFullpage.Wrapper>
               {/* Welcome Section */}

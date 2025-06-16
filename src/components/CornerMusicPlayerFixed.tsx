@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Howl } from "howler";
 import { supabase } from "@/utils/supabase";
 import { MusicTrack } from "@/utils/supabase";
@@ -15,12 +15,22 @@ export default function CornerMusicPlayer() {
   const [volume, setVolume] = useState(0.5);
   const [expanded, setExpanded] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [seek, setSeek] = useState(0);
-  const [loading, setLoading] = useState(true);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [error, setError] = useState<string | null>(null);
+  const [seek, setSeek] = useState(0);  const [loading, setLoading] = useState(true);
+  // Error state is only set but not used in rendering
+  const [, setError] = useState<string | null>(null);
   const soundRef = useRef<Howl | null>(null);
   const seekIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Clean up function
+  const stopAndCleanup = useCallback(() => {
+    if (soundRef.current) {
+      soundRef.current.stop();
+    }
+
+    if (seekIntervalRef.current) {
+      clearInterval(seekIntervalRef.current);
+      seekIntervalRef.current = null;
+    }
+  }, []);
 
   // Fetch music tracks on component mount
   useEffect(() => {
@@ -31,7 +41,7 @@ export default function CornerMusicPlayer() {
       clearInterval(refreshInterval);
       stopAndCleanup();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stopAndCleanup]);
 
   // Handle autoplay restrictions
   useEffect(() => {
@@ -210,20 +220,8 @@ export default function CornerMusicPlayer() {
         // Try next track after a short delay
         setTimeout(playNextTrack, 1500);
       }
-    };
-
-    loadTrack();
+    };    loadTrack();
   }, [currentTrackIndex, tracks, volume]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Clean up function
-  const stopAndCleanup = () => {
-    if (soundRef.current) {
-      soundRef.current.stop();
-      soundRef.current.unload();
-      soundRef.current = null;
-    }
-    stopSeekInterval();
-  };
 
   // Start tracking audio position
   const startSeekInterval = () => {
@@ -298,11 +296,11 @@ export default function CornerMusicPlayer() {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
-  // Helper function to determine color for character count (unused but kept for reference)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getCounterColor = () => {
-    return duration > 0 ? "text-gray-400" : "text-gray-500";
-  };
+
+  // Helper function to determine color for character count  // Unused function - keeping for potential future use
+  // const getCounterColor = () => {
+  //   return duration > 0 ? "text-gray-400" : "text-gray-500";
+  // };
 
   // Get current track
   const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null;

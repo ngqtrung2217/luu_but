@@ -38,11 +38,9 @@ export default function AdminPanel() {
         setIsAdmin(false);
         setLoading(false);
         return;
-      }
-
-      // In a real app, we'd check for admin role in the user's metadata or claims
+      }      // In a real app, we'd check for admin role in the user's metadata or claims
       // This is simplified for demo purposes
-      const { data, error } = await supabase
+      const { data, /* error */ } = await supabase
         .from("admin_users")
         .select("*")
         .eq("user_id", session.user.id)
@@ -69,9 +67,8 @@ export default function AdminPanel() {
 
       if (error) throw error;
 
-      setEntries(data as GuestbookEntry[]);
-    } catch (err: any) {
-      setError(err.message);
+      setEntries(data as GuestbookEntry[]);    } catch (err) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }

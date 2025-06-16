@@ -22,11 +22,10 @@ export function useIntersectionObserver(
 
       observedEntries.forEach((entry) => {
         setElements((prev) => new Map(prev.set(entry.target, entry.isIntersecting)));
-      });
-    }, options);
+      });    }, options);
 
     return () => observer.disconnect();
-  }, [options.threshold, options.rootMargin]);
+  }, [options.threshold, options.rootMargin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const observe = (element: Element | null) => {
     if (!element) return;
